@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastro de Usuários</title>
+    <link rel="icon" href="{{ url_for('static', filename='laranja.ico') }}" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            font-family: Verdana, Arial, sans-serif;
+        }
+        .page-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f2f2f2;
+        }
+        .header {
+            width: 100%;
+            background-color: #e67e22;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header img {
+            height: 50px;
+            vertical-align: middle;
+        }
+        .header-nav {
+            display: inline-block;
+            margin-left: 20px;
+        }
+        .header-nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 0 15px;
+        }
+        .header-nav a:hover {
+            text-decoration: underline;
+        }
+        .content-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            gap: 30px;
+        }
+        .cadastro-container {
+            flex: 1.5;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        .lista-usuarios-container {
+            flex: 4;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        h2 {
+            color: #e67e22;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+            text-align: left;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #e67e22;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #d35400;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        th {
+            background-color: #f39c12;
+            color: white;
+            cursor: pointer;
+        }
+        th a {
+            color: white;
+            text-decoration: none;
+        }
+        .hidden {
+            display: none;
+        }
+        .sort-icon {
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        @media (max-width: 768px) {
+            .content-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+    <script>
+        function toggleSenha() {
+            const tipoUsuario = document.getElementById("tipo_usuario").value;
+            const senhaField = document.getElementById("senha");
+
+            if (tipoUsuario === "administrador") {
+                senhaField.required = true;
+                senhaField.parentElement.classList.remove("hidden");
+            } else {
+                senhaField.required = false;
+                senhaField.parentElement.classList.add("hidden");
+                senhaField.value = "";
+            }
+        }
+        window.onload = toggleSenha;
+    </script>
+</head>
+<body>
+    <div class="page-container">
+        <div class="header">
+            <img src="https://dep.ufscar.br/wp-content/uploads/2021/08/logo-gp-cdpro.png" alt="CDPro Logo">
+            <div class="header-nav">
+                <a href="{{ url_for('pagina_principal') }}">Página Principal</a>
+                <a href="{{ url_for('cadastro') }}">Cadastro de Usuários</a>
+                <a href="{{ url_for('registro_pesagem') }}">Registro de Pesagens</a>
+                <a href="{{ url_for('vinculo_cartoes') }}">Vínculo de Cartões</a>
+                <a href="{{ url_for('alterar_senha') }}">Alterar Senha</a>
+                <a href="{{ url_for('logout') }}">Sair</a>
+            </div>
+        </div>
+
+        <div class="content-container">
+            <div class="cadastro-container">
+                <h2>Cadastro de Usuários</h2>
+                <form action="{{ url_for('cadastro_post') }}" method="POST">
+                    <label for="nome">Nome:</label>
+                    <input type="text" id="nome" name="nome" required>
+
+                    <div class="hidden">
+                        <label for="senha">Senha:</label>
+                        <input type="password" id="senha" name="senha">
+                    </div>
+
+                    <label for="cpf">CPF:</label>
+                    <input type="text" id="cpf" name="cpf" required pattern="\d{11}" title="Digite um CPF válido (11 dígitos)">
+
+                    <label for="tipo_usuario">Tipo de Usuário:</label>
+                    <select id="tipo_usuario" name="tipo_usuario" required onchange="toggleSenha()">
+                        <option value="comum" selected>Usuário Comum</option>
+                        <option value="administrador">Administrador</option>
+                    </select>
+
+                    <button type="submit">Cadastrar</button>
+                </form>
+            </div>
+
+            <div class="lista-usuarios-container">
+                <h2>Usuários Cadastrados</h2>
+                <table>
+                    <tr>
+                        <th>
+                            <a href="{{ url_for('cadastro', sort='id_u', order=new_order) }}">
+                                ID Cartão
+                                {% if sort == 'id_u' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('cadastro', sort='nome', order=new_order) }}">
+                                Nome
+                                {% if sort == 'nome' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('cadastro', sort='cpf', order=new_order) }}">
+                                CPF
+                                {% if sort == 'cpf' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('cadastro', sort='data_u', order=new_order) }}">
+                                Data de Registro
+                                {% if sort == 'data_u' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('cadastro', sort='tipo_usuario', order=new_order) }}">
+                                Tipo de Usuário
+                                {% if sort == 'tipo_usuario' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>Ações</th>
+                    </tr>
+                    {% for usuario in usuarios %}
+                    <tr>
+                        <td>{{ usuario[1] }}</td>
+                        <td>{{ usuario[2] }}</td>
+                        <td>{{ usuario[0] }}</td>
+                        <td>{{ usuario[3] }}</td>
+                        <td>{{ usuario[4] }}</td>
+                        <td>
+                            <form action="{{ url_for('excluir_usuario', usuario_id=usuario[1]) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este usuário?');">
+                                <button type="submit" class="delete-button">Excluir</button>
+                            </form>                          
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

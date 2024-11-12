@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alterar Senha</title>
+    <link rel="icon" href="{{ url_for('static', filename='laranja.ico') }}" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: Verdana, Arial, sans-serif;
+        }
+
+        .page-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f2f2f2;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #e67e22;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header img {
+            height: 50px;
+            vertical-align: middle;
+        }
+
+        .header-nav {
+            display: inline-block;
+            margin-left: 20px;
+        }
+
+        .header-nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 0 15px;
+        }
+
+        .header-nav a:hover {
+            text-decoration: underline;
+        }
+
+        .content-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .senha-box {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h2 {
+            color: #e67e22;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #e67e22;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #d35400;
+        }
+
+        .mensagem {
+            color: red;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- Header -->
+        <div class="header">
+            <img src="https://dep.ufscar.br/wp-content/uploads/2021/08/logo-gp-cdpro.png" alt="CDPro Logo">
+            <div class="header-nav">
+                <a href="{{ url_for('pagina_principal') }}">Página Principal</a>
+                <a href="{{ url_for('cadastro') }}">Cadastro de Usuários</a>
+                <a href="{{ url_for('registro_pesagem') }}">Registro de Pesagens</a>
+                <a href="{{ url_for('vinculo_cartoes') }}">Vínculo de Cartões</a>
+                <a href="{{ url_for('alterar_senha') }}">Alterar Senha</a>
+                <a href="{{ url_for('logout') }}">Sair</a>
+            </div>
+        </div>
+
+        <!-- Main content area -->
+        <div class="content-container">
+            <div class="senha-box">
+                <h2>Alterar Senha</h2>
+                {% if mensagem %}
+                <div class="mensagem">{{ mensagem }}</div>
+                {% endif %}
+                <form action="{{ url_for('alterar_senha') }}" method="POST">
+                    <label for="senha_atual">Senha Atual:</label>
+                    <input type="password" id="senha_atual" name="senha_atual" required>
+
+                    <label for="nova_senha">Nova Senha:</label>
+                    <input type="password" id="nova_senha" name="nova_senha" required>
+
+                    <label for="confirmar_senha">Confirmar Nova Senha:</label>
+                    <input type="password" id="confirmar_senha" name="confirmar_senha" required>
+
+                    <button type="submit">Alterar Senha</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

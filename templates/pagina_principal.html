@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Página Principal</title>
+    <link rel="icon" href="{{ url_for('static', filename='laranja.ico') }}" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: Verdana, Arial, sans-serif;
+        }
+
+        .page-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f2f2f2;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #e67e22;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header img {
+            height: 50px;
+            vertical-align: middle;
+        }
+
+        .header-nav {
+            display: inline-block;
+            margin-left: 20px;
+        }
+
+        .header-nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 0 15px;
+        }
+
+        .header-nav a:hover {
+            text-decoration: underline;
+        }
+
+        .content-container {
+            flex: 1;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            gap: 30px;
+        }
+
+        .filters-container {
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            width: 30%;
+        }
+
+        .pesagens-container {
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            width: 70%;
+        }
+
+        h2 {
+            color: #e67e22;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #e67e22;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #d35400;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f39c12;
+            color: white;
+            cursor: pointer;
+        }
+
+        th a {
+            color: white;
+            text-decoration: none;
+        }
+
+        /* CSS para a seta de ordenamento */
+        .sort-icon {
+            font-size: 12px;
+            margin-left: 5px;
+        }
+
+        td {
+            white-space: nowrap;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .content-container {
+                flex-direction: column;
+            }
+
+            .filters-container, .pesagens-container {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- Header -->
+        <div class="header">
+            <img src="https://dep.ufscar.br/wp-content/uploads/2021/08/logo-gp-cdpro.png" alt="CDPro Logo">
+            <div class="header-nav">
+                <a href="{{ url_for('pagina_principal') }}">Página Principal</a>
+                <a href="{{ url_for('cadastro') }}">Cadastro de Usuários</a>
+                <a href="{{ url_for('registro_pesagem') }}">Registro de Pesagens</a>
+                <a href="{{ url_for('vinculo_cartoes') }}">Vínculo de Cartões</a>
+                <a href="{{ url_for('alterar_senha') }}">Alterar Senha</a>
+                <a href="{{ url_for('logout') }}">Sair</a>
+            </div>
+        </div>
+
+        <!-- Main content area -->
+        <div class="content-container">
+            <!-- Container de filtros -->
+            <div class="filters-container">
+                <h2>Filtros de Pesagens</h2>
+                <form method="POST" action="{{ url_for('pagina_principal') }}">
+                    {% if session.tipo_usuario == 'administrador' %}
+                    <label for="cpf">CPF</label>
+                    <input type="text" id="cpf" name="cpf" placeholder="Digite o CPF do usuário" pattern="\d{11}" title="Digite um CPF válido (11 dígitos)">
+                    {% endif %}
+                    <label for="data_inicio">Data Início</label>
+                    <input type="date" id="data_inicio" name="data_inicio">
+            
+                    <label for="data_fim">Data Fim</label>
+                    <input type="date" id="data_fim" name="data_fim">
+            
+                    <button type="submit">Aplicar Filtros</button>
+                </form>
+            </div>
+
+            <!-- Container da tabela de pesagens -->
+            <div class="pesagens-container">
+                <h2>Pesagens Realizadas</h2>
+                <table>
+                    <tr>
+                        <th>
+                            <a href="{{ url_for('pagina_principal', sort='id_d', order=new_order) }}">
+                                ID da Pesagem
+                                {% if sort == 'id_d' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('pagina_principal', sort='id_u', order=new_order) }}">
+                                ID do Cartão
+                                {% if sort == 'id_u' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('pagina_principal', sort='cpf', order=new_order) }}">
+                                CPF do Colhedor
+                                {% if sort == 'cpf' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('pagina_principal', sort='peso', order=new_order) }}">
+                                Peso (kg)
+                                {% if sort == 'peso' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('pagina_principal', sort='timest', order=new_order) }}">
+                                Horário da Pesagem
+                                {% if sort == 'timest' %}
+                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
+                                {% endif %}
+                            </a>
+                        </th>
+                    </tr>
+                    {% for pesagem in pesagens %}
+                    <tr>
+                        <td>{{ pesagem[0] }}</td> <!-- ID da pesagem -->
+                        <td>{{ pesagem[1] }}</td> <!-- ID do cartão -->
+                        <td>{{ pesagem[2] }}</td> <!-- CPF do colhedor -->
+                        <td>{{ pesagem[3] }}</td> <!-- Peso -->
+                        <td>{{ pesagem[4] }}</td> <!-- Horário da pesagem -->
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
