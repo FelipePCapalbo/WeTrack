@@ -1,49 +1,54 @@
 import os
+import psycopg2
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
-import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+# Configuração de conexão com PostgreSQL no Neon
+DATABASE_URL = "postgresql://db_WeTrack_owner:Hj3N8lMOnmFc@ep-mute-leaf-a5pr38hd-pooler.us-east-2.aws.neon.tech/db_WeTrack?sslmode=require"
+
 def init_db():
-    conn = sqlite3.connect('database.db')
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
 
-    # Adicionar o campo 'tipo_usuario' à tabela 'usuario'
+    # Criação da tabela 'usuario' com PostgreSQL
     c.execute('''
         CREATE TABLE IF NOT EXISTS usuario (
             cpf TEXT PRIMARY KEY,
             id_u TEXT NOT NULL UNIQUE,  
             nome TEXT NOT NULL,
             senha TEXT NOT NULL,
-            data_u TEXT NOT NULL,
-            tipo_usuario TEXT NOT NULL DEFAULT 'comum'  -- Adicionando o tipo de usuário ('comum' ou 'administrador')
+            data_u TIMESTAMP NOT NULL,
+            tipo_usuario TEXT NOT NULL DEFAULT 'comum'
         )
     ''')
 
-    # Manter o restante do código conforme o original, incluindo a inserção do usuário
+    # Criação da tabela 'dado' com PostgreSQL
     c.execute('''
         CREATE TABLE IF NOT EXISTS dado (
-            id_d INTEGER PRIMARY KEY AUTOINCREMENT,
-            id_u TEXT NOT NULL,  -- ID do cartão
-            cpf TEXT NOT NULL,   -- CPF do colhedor
+            id_d SERIAL PRIMARY KEY,
+            id_u TEXT NOT NULL,
+            cpf TEXT NOT NULL,
             peso REAL NOT NULL,
-            timest TEXT NOT NULL,
-            data_d TEXT NOT NULL,
+            timest TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            data_d DATE NOT NULL DEFAULT CURRENT_DATE,
             FOREIGN KEY (id_u) REFERENCES usuario(id_u),
             FOREIGN KEY (cpf) REFERENCES usuario(cpf)
         )
     ''')
 
-    # Inserir o usuário Felipe Capalbo com o tipo 'administrador', se ainda não existir
+    # Inserir o usuário Felipe Capalbo se não existir
     c.execute('''
-        INSERT OR IGNORE INTO usuario (cpf, id_u, nome, senha, data_u, tipo_usuario)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 'administrador')
+        INSERT INTO usuario (cpf, id_u, nome, senha, data_u, tipo_usuario)
+        VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, 'administrador')
+        ON CONFLICT (cpf) DO NOTHING
     ''', ('00000000000', '00000', 'Felipe Capalbo', generate_password_hash('12345')))
 
     conn.commit()
     conn.close()
+
 
 @app.route('/')
 def login():
@@ -52,9 +57,9 @@ def login():
 @app.route('/check_cpf', methods=['POST'])
 def check_cpf():
     cpf = request.form['cpf']
-    conn = sqlite3.connect('database.db')
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
-    c.execute('SELECT * FROM usuario WHERE cpf = ?', (cpf,))
+    c.execute('SELECT * FROM usuario WHERE cpf = %s', (cpf,))
     user = c.fetchone()
     conn.close()
     
@@ -77,9 +82,9 @@ def check_cpf():
 def login_post():
     cpf = request.form['cpf']
     senha = request.form['senha']
-    conn = sqlite3.connect('database.db')
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
-    c.execute('SELECT * FROM usuario WHERE cpf = ?', (cpf,))
+    c.execute('SELECT * FROM usuario WHERE cpf = %s', (cpf,))
     user = c.fetchone()
     conn.close()
 
@@ -110,7 +115,7 @@ def logout():
 @app.route('/cadastro')
 def cadastro():
     if 'user_id' in session:
-        conn = sqlite3.connect('database.db')
+        conn = psycopg2.connect(DATABASE_URL)
         c = conn.cursor()
 
         # Captura os parâmetros de ordenação
@@ -152,10 +157,10 @@ def cadastro_post():
     tipo_usuario = request.form.get('tipo_usuario', 'comum')
     id_u = ""  # ID do cartão vazio
 
-    conn = sqlite3.connect('database.db')
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
 
-    c.execute('SELECT * FROM usuario WHERE cpf = ?', (cpf,))
+    c.execute('SELECT * FROM usuario WHERE cpf = %s', (cpf,))
     usuario_existente = c.fetchone()
 
     if usuario_existente:
@@ -164,7 +169,7 @@ def cadastro_post():
     else:
         c.execute('''
             INSERT INTO usuario (cpf, id_u, nome, senha, data_u, tipo_usuario)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, %s)
         ''', (cpf, id_u, nome, generate_password_hash(senha), tipo_usuario))
         conn.commit()
         flash('Usuário cadastrado com sucesso.')
@@ -175,7 +180,7 @@ def cadastro_post():
 @app.route('/pesagens')
 def pesagens():
     if 'user_id' in session:
-        conn = sqlite3.connect('database.db')
+        conn = psycopg2.connect(DATABASE_URL)
         c = conn.cursor()
 
         # Carregar todas as pesagens realizadas
@@ -192,11 +197,11 @@ def adicionar_pesagem():
     id_cartao = request.form['id_cartao']  # ID do cartão
     peso = request.form['peso']
 
-    conn = sqlite3.connect('database.db')
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
 
     # Buscar o CPF associado ao ID do cartão (id_u)
-    c.execute('SELECT cpf FROM usuario WHERE id_u = ?', (id_cartao,))
+    c.execute('SELECT cpf FROM usuario WHERE id_u = %s', (id_cartao,))
     usuario_existente = c.fetchone()
 
     if usuario_existente:
@@ -204,7 +209,7 @@ def adicionar_pesagem():
         # Inserir nova pesagem com o CPF do colhedor vinculado
         c.execute('''
             INSERT INTO dado (id_u, cpf, peso, timest, data_d)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_DATE)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_DATE)
         ''', (id_cartao, cpf, peso))
         conn.commit()
         flash('Pesagem adicionada com sucesso.')
@@ -214,10 +219,11 @@ def adicionar_pesagem():
     conn.close()
     return redirect(url_for('registro_pesagem'))
 
+
 @app.route('/pagina_principal', methods=['GET', 'POST'])
 def pagina_principal():
     if 'user_id' in session:
-        conn = sqlite3.connect('database.db')
+        conn = psycopg2.connect(DATABASE_URL)
         c = conn.cursor()
 
         cpf = request.form.get('cpf') if session.get('tipo_usuario') == 'administrador' else session.get('user_id')
@@ -233,17 +239,17 @@ def pagina_principal():
 
         # Se for usuário comum, filtra pelo próprio CPF
         if session.get('tipo_usuario') == 'comum':
-            query += ' AND dado.cpf = ?'
+            query += ' AND dado.cpf = %s'
             params.append(cpf)
         elif cpf:
-            query += ' AND dado.cpf = ?'
+            query += ' AND dado.cpf = %s'
             params.append(cpf)
 
         if data_inicio:
-            query += ' AND dado.timest >= ?'
+            query += ' AND dado.timest >= %s'
             params.append(data_inicio)
         if data_fim:
-            query += ' AND dado.timest <= ?'
+            query += ' AND dado.timest <= %s'
             params.append(data_fim)
 
         query += ' ORDER BY dado.timest DESC'
@@ -264,9 +270,9 @@ def alterar_senha():
             confirmar_senha = request.form['confirmar_senha']
             user_id = session['user_id']
 
-            conn = sqlite3.connect('database.db')
+            conn = psycopg2.connect(DATABASE_URL)
             c = conn.cursor()
-            c.execute('SELECT senha FROM usuario WHERE id_u = ?', (user_id,))
+            c.execute('SELECT senha FROM usuario WHERE id_u = %s', (user_id,))
             senha_armazenada = c.fetchone()[0]
 
             if not check_password_hash(senha_armazenada, senha_atual):
@@ -275,7 +281,7 @@ def alterar_senha():
                 mensagem = "A nova senha e a confirmação não coincidem."
             else:
                 nova_senha_hashed = generate_password_hash(nova_senha)
-                c.execute('UPDATE usuario SET senha = ? WHERE id_u = ?', (nova_senha_hashed, user_id))
+                c.execute('UPDATE usuario SET senha = %s WHERE id_u = %s', (nova_senha_hashed, user_id))
                 conn.commit()
                 flash('Senha alterada com sucesso.')
                 return redirect(url_for('pagina_principal'))
@@ -291,18 +297,19 @@ def alterar_senha():
 @app.route('/excluir_usuario/<usuario_id>', methods=['POST'])
 def excluir_usuario(usuario_id):
     if 'user_id' in session:
-        conn = sqlite3.connect('database.db')
+        conn = psycopg2.connect(DATABASE_URL)
         c = conn.cursor()
-        c.execute('DELETE FROM usuario WHERE id_u = ?', (usuario_id,))
+        c.execute('DELETE FROM usuario WHERE id_u = %s', (usuario_id,))
         conn.commit()
         flash('Usuário excluído com sucesso.')
         conn.close()
     return redirect(url_for('cadastro'))
 
+
 @app.route('/registro_pesagem')
 def registro_pesagem():
     if 'user_id' in session:
-        conn = sqlite3.connect('database.db')
+        conn = psycopg2.connect(DATABASE_URL)
         c = conn.cursor()
 
         # Captura os parâmetros de ordenação
@@ -340,17 +347,18 @@ def registro_pesagem():
         flash('Você precisa estar logado para acessar esta página.')
         return redirect(url_for('login'))
 
+
 @app.route('/vinculo_cartoes', methods=['GET', 'POST'])
 def vinculo_cartoes():
-    conn = sqlite3.connect('database.db')
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
 
     # Para o container da esquerda: buscar usuários sem ID_U
-    c.execute('SELECT cpf, nome FROM usuario WHERE id_u IS NULL OR id_u = ""')
+    c.execute("SELECT cpf, nome FROM usuario WHERE id_u IS NULL OR id_u = ''")
     usuarios_sem_vinculo = c.fetchall()
 
     # Para o container da direita: buscar usuários com ID_U preenchido
-    c.execute('SELECT cpf, nome, id_u FROM usuario WHERE id_u IS NOT NULL AND id_u != ""')
+    c.execute("SELECT cpf, nome, id_u FROM usuario WHERE id_u IS NOT NULL AND id_u != ''")
     usuarios_com_vinculo = c.fetchall()
 
     # Se o método for POST (para associar um ID a um usuário)
@@ -360,7 +368,7 @@ def vinculo_cartoes():
         
         if cpf and novo_id:
             # Associar o novo ID ao usuário
-            c.execute('UPDATE usuario SET id_u = ? WHERE cpf = ?', (novo_id, cpf))
+            c.execute('UPDATE usuario SET id_u = %s WHERE cpf = %s', (novo_id, cpf))
             conn.commit()
             flash('ID associado com sucesso!')
 
@@ -371,11 +379,11 @@ def vinculo_cartoes():
 
 @app.route('/remover_vinculo/<cpf>', methods=['POST'])
 def remover_vinculo(cpf):
-    conn = sqlite3.connect('database.db')
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
     
     # Remover o vínculo de ID_U do usuário (definir como string vazia "")
-    c.execute('UPDATE usuario SET id_u = "" WHERE cpf = ?', (cpf,))
+    c.execute("UPDATE usuario SET id_u = '' WHERE cpf = %s", (cpf,))
     conn.commit()
     conn.close()
 
@@ -392,11 +400,11 @@ def adicionar_pesagem_remota():
     id_cartao = data['id_cartao']
     peso = data['peso']
 
-    conn = sqlite3.connect('database.db')
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
 
     # Buscar o CPF associado ao ID do cartão (id_u)
-    c.execute('SELECT cpf FROM usuario WHERE id_u = ?', (id_cartao,))
+    c.execute('SELECT cpf FROM usuario WHERE id_u = %s', (id_cartao,))
     usuario_existente = c.fetchone()
 
     if usuario_existente:
@@ -404,7 +412,7 @@ def adicionar_pesagem_remota():
         # Inserir nova pesagem com o CPF do colhedor vinculado
         c.execute('''
             INSERT INTO dado (id_u, cpf, peso, timest, data_d)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_DATE)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_DATE)
         ''', (id_cartao, cpf, peso))
         conn.commit()
         conn.close()
@@ -412,7 +420,8 @@ def adicionar_pesagem_remota():
     else:
         return jsonify({'message': 'Usuário não encontrado'}), 404
 
+
 if __name__ == "__main__":
     init_db()
-    port = int(os.environ.get("PORT", 5000))  # Porta definida pelo Render
+    port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
