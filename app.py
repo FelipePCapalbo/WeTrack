@@ -155,7 +155,7 @@ def cadastro_post():
     cpf = request.form['cpf']
     senha = request.form['senha']
     tipo_usuario = request.form.get('tipo_usuario', 'comum')
-    id_u = ""  # ID do cartão vazio
+    id_u = None # ID do cartão vazio
 
     conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
