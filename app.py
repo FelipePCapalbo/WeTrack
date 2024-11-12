@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -213,7 +214,6 @@ def adicionar_pesagem():
     conn.close()
     return redirect(url_for('registro_pesagem'))
 
-
 @app.route('/pagina_principal', methods=['GET', 'POST'])
 def pagina_principal():
     if 'user_id' in session:
@@ -299,7 +299,6 @@ def excluir_usuario(usuario_id):
         conn.close()
     return redirect(url_for('cadastro'))
 
-
 @app.route('/registro_pesagem')
 def registro_pesagem():
     if 'user_id' in session:
@@ -340,7 +339,6 @@ def registro_pesagem():
     else:
         flash('Você precisa estar logado para acessar esta página.')
         return redirect(url_for('login'))
-
 
 @app.route('/vinculo_cartoes', methods=['GET', 'POST'])
 def vinculo_cartoes():
@@ -414,7 +412,7 @@ def adicionar_pesagem_remota():
     else:
         return jsonify({'message': 'Usuário não encontrado'}), 404
 
-
 if __name__ == "__main__":
     init_db()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Porta definida pelo Render
+    app.run(host='0.0.0.0', port=port, debug=True)
