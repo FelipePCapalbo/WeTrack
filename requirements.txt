@@ -2,3 +2,4 @@ Flask
 gunicorn
 werkzeug
 psycopg2
+uuid

@@ -2,6 +2,7 @@ import os
 import psycopg2
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
+import uuid
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -39,12 +40,12 @@ def init_db():
         )
     ''')
 
-    # Inserir o usuário Felipe Capalbo se não existir
+    # Inserir o usuário Felipe Capalbo com um UUID único para id_u, se não existir
     c.execute('''
         INSERT INTO usuario (cpf, id_u, nome, senha, data_u, tipo_usuario)
         VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, 'administrador')
         ON CONFLICT (cpf) DO NOTHING
-    ''', ('00000000000', '00000', 'Felipe Capalbo', generate_password_hash('12345')))
+    ''', ('00000000000', str(uuid.uuid4()), 'Felipe Capalbo', generate_password_hash('12345')))
 
     conn.commit()
     conn.close()
@@ -155,11 +156,14 @@ def cadastro_post():
     cpf = request.form['cpf']
     senha = request.form['senha']
     tipo_usuario = request.form.get('tipo_usuario', 'comum')
-    id_u = None # ID do cartão vazio
+    
+    # Gera um UUID para `id_u` se ele não for fornecido
+    id_u = request.form.get('id_u', str(uuid.uuid4()))  # Garante que `id_u` tenha um valor único
 
     conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
 
+    # Verifica se o CPF já está cadastrado
     c.execute('SELECT * FROM usuario WHERE cpf = %s', (cpf,))
     usuario_existente = c.fetchone()
 
@@ -167,10 +171,12 @@ def cadastro_post():
         flash('CPF já cadastrado. Por favor, use outro CPF.')
         return redirect(url_for('cadastro'))
     else:
+        # Inserir o usuário com o UUID gerado para `id_u`
         c.execute('''
             INSERT INTO usuario (cpf, id_u, nome, senha, data_u, tipo_usuario)
             VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, %s)
         ''', (cpf, id_u, nome, generate_password_hash(senha), tipo_usuario))
+        
         conn.commit()
         flash('Usuário cadastrado com sucesso.')
 
@@ -354,11 +360,11 @@ def vinculo_cartoes():
     c = conn.cursor()
 
     # Para o container da esquerda: buscar usuários sem ID_U
-    c.execute("SELECT cpf, nome FROM usuario WHERE id_u IS NULL OR id_u = NULL")
+    c.execute("SELECT cpf, nome FROM usuario WHERE id_u IS NULL")
     usuarios_sem_vinculo = c.fetchall()
 
     # Para o container da direita: buscar usuários com ID_U preenchido
-    c.execute("SELECT cpf, nome, id_u FROM usuario WHERE id_u IS NOT NULL AND id_u != NULL")
+    c.execute("SELECT cpf, nome, id_u FROM usuario WHERE id_u IS NOT NULL")
     usuarios_com_vinculo = c.fetchall()
 
     # Se o método for POST (para associar um ID a um usuário)
@@ -382,7 +388,7 @@ def remover_vinculo(cpf):
     conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
     
-    # Remover o vínculo de ID_U do usuário (definir como string vazia "")
+    # Remover o vínculo de ID_U do usuário (definir como NULL)
     c.execute("UPDATE usuario SET id_u = NULL WHERE cpf = %s", (cpf,))
     conn.commit()
     conn.close()
