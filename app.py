@@ -354,11 +354,11 @@ def vinculo_cartoes():
     c = conn.cursor()
 
     # Para o container da esquerda: buscar usuários sem ID_U
-    c.execute("SELECT cpf, nome FROM usuario WHERE id_u IS NULL OR id_u = ''")
+    c.execute("SELECT cpf, nome FROM usuario WHERE id_u IS NULL OR id_u = NULL")
     usuarios_sem_vinculo = c.fetchall()
 
     # Para o container da direita: buscar usuários com ID_U preenchido
-    c.execute("SELECT cpf, nome, id_u FROM usuario WHERE id_u IS NOT NULL AND id_u != ''")
+    c.execute("SELECT cpf, nome, id_u FROM usuario WHERE id_u IS NOT NULL AND id_u != NULL")
     usuarios_com_vinculo = c.fetchall()
 
     # Se o método for POST (para associar um ID a um usuário)
@@ -383,7 +383,7 @@ def remover_vinculo(cpf):
     c = conn.cursor()
     
     # Remover o vínculo de ID_U do usuário (definir como string vazia "")
-    c.execute("UPDATE usuario SET id_u = '' WHERE cpf = %s", (cpf,))
+    c.execute("UPDATE usuario SET id_u = NULL WHERE cpf = %s", (cpf,))
     conn.commit()
     conn.close()
 
