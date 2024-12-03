@@ -197,58 +197,29 @@
             <div class="pesagens-container">
                 <h2>Pesagens Realizadas</h2>
                 <table>
-                    <tr>
-                        <th>
-                            <a href="{{ url_for('pagina_principal', sort='id_d', order=new_order) }}">
-                                ID da Pesagem
-                                {% if sort == 'id_d' %}
-                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
-                                {% endif %}
-                            </a>
-                        </th>
-                        <th>
-                            <a href="{{ url_for('pagina_principal', sort='id_u', order=new_order) }}">
-                                ID do Cartão
-                                {% if sort == 'id_u' %}
-                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
-                                {% endif %}
-                            </a>
-                        </th>
-                        <th>
-                            <a href="{{ url_for('pagina_principal', sort='cpf', order=new_order) }}">
-                                CPF do Colhedor
-                                {% if sort == 'cpf' %}
-                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
-                                {% endif %}
-                            </a>
-                        </th>
-                        <th>
-                            <a href="{{ url_for('pagina_principal', sort='peso', order=new_order) }}">
-                                Peso (kg)
-                                {% if sort == 'peso' %}
-                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
-                                {% endif %}
-                            </a>
-                        </th>
-                        <th>
-                            <a href="{{ url_for('pagina_principal', sort='timest', order=new_order) }}">
-                                Horário da Pesagem
-                                {% if sort == 'timest' %}
-                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
-                                {% endif %}
-                            </a>
-                        </th>
-                    </tr>
-                    {% for pesagem in pesagens %}
-                    <tr>
-                        <td>{{ pesagem[0] }}</td> <!-- ID da pesagem -->
-                        <td>{{ pesagem[1] }}</td> <!-- ID do cartão -->
-                        <td>{{ pesagem[2] }}</td> <!-- CPF do colhedor -->
-                        <td>{{ pesagem[3] }}</td> <!-- Peso -->
-                        <td>{{ pesagem[4] }}</td> <!-- Horário da pesagem -->
-                    </tr>
-                    {% endfor %}
-                </table>
+                    <thead>
+                        <tr>
+                            <th>ID da Pesagem</th>
+                            <th>ID do Cartão</th>
+                            <th>CPF</th>
+                            <th>Peso</th>
+                            <th>Data</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pesagem in pesagens %}
+                        <tr>
+                            <td>{{ pesagem[0] }}</td>  <!-- ID da Pesagem -->
+                            <td>{{ pesagem[1] }}</td>  <!-- ID do Cartão -->
+                            <td>{{ pesagem[2] }}</td>  <!-- CPF -->
+                            <td>{{ pesagem[3] }}</td>  <!-- Peso -->
+                            <td>{{ pesagem[4] }}</td>  <!-- Data -->
+                            <td>{{ pesagem[5] }}</td>  <!-- Hora -->
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>                            
             </div>
         </div>
     </div>

@@ -193,14 +193,6 @@
                 <table>
                     <tr>
                         <th>
-                            <a href="{{ url_for('cadastro', sort='id_u', order=new_order) }}">
-                                ID Cartão
-                                {% if sort == 'id_u' %}
-                                    <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
-                                {% endif %}
-                            </a>
-                        </th>
-                        <th>
                             <a href="{{ url_for('cadastro', sort='nome', order=new_order) }}">
                                 Nome
                                 {% if sort == 'nome' %}
@@ -217,17 +209,17 @@
                             </a>
                         </th>
                         <th>
-                            <a href="{{ url_for('cadastro', sort='data_u', order=new_order) }}">
-                                Data de Registro
-                                {% if sort == 'data_u' %}
+                            <a href="{{ url_for('cadastro', sort='tipo_usuario', order=new_order) }}">
+                                Tipo de Usuário
+                                {% if sort == 'tipo_usuario' %}
                                     <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
                                 {% endif %}
                             </a>
                         </th>
                         <th>
-                            <a href="{{ url_for('cadastro', sort='tipo_usuario', order=new_order) }}">
-                                Tipo de Usuário
-                                {% if sort == 'tipo_usuario' %}
+                            <a href="{{ url_for('cadastro', sort='data_inclusao', order=new_order) }}">
+                                Data de Registro
+                                {% if sort == 'data_inclusao' %}
                                     <span class="sort-icon">{{ '▲' if order == 'asc' else '▼' }}</span>
                                 {% endif %}
                             </a>
@@ -236,19 +228,18 @@
                     </tr>
                     {% for usuario in usuarios %}
                     <tr>
-                        <td>{{ usuario[1] }}</td>
-                        <td>{{ usuario[2] }}</td>
-                        <td>{{ usuario[0] }}</td>
-                        <td>{{ usuario[3] }}</td>
-                        <td>{{ usuario[4] }}</td>
+                        <td>{{ usuario.nome }}</td> <!-- Nome -->
+                        <td>{{ usuario.cpf }}</td> <!-- CPF -->
+                        <td>{{ usuario.tipo_usuario }}</td> <!-- Tipo de Usuário -->
+                        <td>{{ usuario.data_inclusao }}</td> <!-- Data de Registro -->
                         <td>
-                            <form action="{{ url_for('excluir_usuario', usuario_id=usuario[1]) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este usuário?');">
+                            <form action="{{ url_for('excluir_usuario', usuario_id=usuario.cpf) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este usuário?');">
                                 <button type="submit" class="delete-button">Excluir</button>
                             </form>                          
                         </td>
                     </tr>
                     {% endfor %}
-                </table>
+                </table>                                                            
             </div>
         </div>
     </div>
