@@ -1,10 +1,7 @@
 import os
-import subprocess
-import threading
-import time
 import psycopg2
 from psycopg2 import pool
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, Response, send_file
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 import datetime
@@ -14,7 +11,6 @@ from logging.handlers import RotatingFileHandler
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-# Inicialização do Flask
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
@@ -36,6 +32,7 @@ limiter.init_app(app)
 
 # Configuração do pool de conexões com PostgreSQL
 DATABASE_URL = "postgresql://db_WeTrack_owner:Hj3N8lMOnmFc@ep-mute-leaf-a5pr38hd-pooler.us-east-2.aws.neon.tech/db_WeTrack?sslmode=require"
+
 try:
     db_pool = psycopg2.pool.SimpleConnectionPool(1, 20, DATABASE_URL)
     if db_pool:
@@ -97,36 +94,6 @@ def init_db():
         app.logger.error(f"Erro durante a inicialização do banco de dados: {e}")
     finally:
         db_pool.putconn(conn)
-
-# Funções para integração com NGROK via subprocess
-
-def localizar_ngrok():
-    possiveis_caminhos = [
-        r"C:\ngrok\ngrok.exe",
-        os.path.expanduser("~\\ngrok\\ngrok.exe"),
-        os.path.join(os.getcwd(), "ngrok.exe"),
-    ]
-    for caminho in possiveis_caminhos:
-        if os.path.exists(caminho):
-            return caminho
-    raise FileNotFoundError("O executável ngrok.exe não foi encontrado.")
-
-def localizar_configuracao_ngrok():
-    arquivo_ngrok = "ngrok.yml"
-    if os.path.exists(arquivo_ngrok):
-        return os.path.abspath(arquivo_ngrok)
-    else:
-        raise FileNotFoundError("O arquivo ngrok.yml não foi encontrado.")
-
-def start_ngrok():
-    try:
-        ngrok_path = "C:\\ngrok\\ngrok.exe"  # Caminho direto para o executável ngrok, ajuste conforme necessário
-        config_path = localizar_configuracao_ngrok()  # Agora pegamos o arquivo ngrok.yml no mesmo diretório
-        subprocess.run([ngrok_path, "start", "--config", config_path, "app"], check=True)
-    except Exception as e:
-        print(f"Erro ao iniciar o Ngrok: {e}")
-
-# Rotas do sistema
 
 @app.route('/')
 def login():
@@ -356,7 +323,7 @@ def adicionar_pesagem():
         db_pool.putconn(conn)
     return redirect(url_for('registro_pesagem'))
 
-@app.route('/pagina_principal', methods=['GET'])
+@app.route('/pagina_principal', methods=['GET', 'POST'])
 def pagina_principal():
     if 'user_id' in session:
         cpf_filter = request.args.get('cpf')
@@ -640,12 +607,7 @@ def adicionar_pesagem_remota():
         app.logger.error(f"Erro inesperado no endpoint /adicionar_pesagem_remota: {e}")
         return jsonify({"message": "Erro interno do servidor."}), 500
 
-# Inicia o NGROK em uma thread separada e, em seguida, inicia o Flask
 if __name__ == "__main__":
     init_db()
-    ngrok_thread = threading.Thread(target=start_ngrok, daemon=True)
-    ngrok_thread.start()
-    # Aguarda um instante para que o ngrok inicie
-    time.sleep(2)
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
