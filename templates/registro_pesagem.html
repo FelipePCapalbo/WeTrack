@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Registro Manual de Pesagem{% endblock %}
+{% block content %}
+<div class="row-container">
+  <!-- Formulário para registro de pesagem -->
+  <div class="pesagem-container">
+    <h2>Registro de Pesagem</h2>
+    <form action="{{ url_for('adicionar_pesagem') }}" method="POST">
+      <label for="id_cartao">ID do Cartão:</label>
+      <input type="text" id="id_cartao" name="id_cartao" required>
+      <label for="peso">Peso (kg):</label>
+      <input type="number" step="0.01" id="peso" name="peso" required>
+      <button type="submit">Registrar Pesagem</button>
+    </form>
+  </div>
+  <!-- Tabela com as pesagens registradas -->
+  <div class="lista-pesagens-container">
+    <h2>Pesagens Registradas</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>
+            <a href="{{ url_for('registro_pesagem', sort='id_pesagem', order=new_order, page=page) }}">
+              ID da Pesagem
+              {% if sort == 'id_pesagem' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('registro_pesagem', sort='id_cartao', order=new_order, page=page) }}">
+              ID do Cartão
+              {% if sort == 'id_cartao' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('registro_pesagem', sort='cpf', order=new_order, page=page) }}">
+              CPF do Colhedor
+              {% if sort == 'cpf' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('registro_pesagem', sort='peso', order=new_order, page=page) }}">
+              Peso (kg)
+              {% if sort == 'peso' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('registro_pesagem', sort='horario', order=new_order, page=page) }}">
+              Horário
+              {% if sort == 'horario' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pesagem in pesagens %}
+        <tr>
+          <td>{{ pesagem[0] }}</td>
+          <td>{{ pesagem[2] }}</td>
+          <td>{{ pesagem[1] }}</td>
+          <td>{{ pesagem[3] }}</td>
+          <td>{{ pesagem[5] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="pagination">
+      {% if page > 1 %}
+        <a href="{{ url_for('registro_pesagem', sort=sort, order=order, page=page-1) }}">Anterior</a>
+      {% endif %}
+      <span>Página {{ page }}</span>
+      {% if has_next %}
+        <a href="{{ url_for('registro_pesagem', sort=sort, order=order, page=page+1) }}">Próxima</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

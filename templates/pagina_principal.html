@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Página Principal{% endblock %}
+{% block content %}
+<div class="row-container">
+  <!-- Container de Filtros -->
+  <div class="filters-container">
+    <h2>Filtrar Pesagens</h2>
+    <form action="{{ url_for('pagina_principal') }}" method="GET">
+      <!-- Novo campo para filtrar por ID do Cartão -->
+      <label for="id_cartao">ID do Cartão:</label>
+      <input type="text" id="id_cartao" name="id_cartao" placeholder="Digite o ID do Cartão">
+      
+      <label for="cpf">CPF:</label>
+      <input type="text" id="cpf" name="cpf" placeholder="Digite o CPF">
+      
+      <label for="data_inicio">Data Início:</label>
+      <input type="date" id="data_inicio" name="data_inicio">
+      
+      <label for="data_fim">Data Fim:</label>
+      <input type="date" id="data_fim" name="data_fim">
+      
+      <button type="submit">Filtrar</button>
+    </form>
+  </div>
+
+  <!-- Container da Tabela de Pesagens -->
+  <div class="container">
+    <h2>Pesagens Realizadas</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>
+            <a href="{{ url_for('pagina_principal', sort='id_pesagem', order=new_order, page=page) }}">
+              ID da Pesagem
+              {% if sort == 'id_pesagem' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('pagina_principal', sort='id_cartao', order=new_order, page=page) }}">
+              ID do Cartão
+              {% if sort == 'id_cartao' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('pagina_principal', sort='cpf', order=new_order, page=page) }}">
+              CPF
+              {% if sort == 'cpf' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('pagina_principal', sort='peso', order=new_order, page=page) }}">
+              Peso
+              {% if sort == 'peso' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('pagina_principal', sort='data', order=new_order, page=page) }}">
+              Data
+              {% if sort == 'data' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('pagina_principal', sort='horario', order=new_order, page=page) }}">
+              Horário
+              {% if sort == 'horario' %}
+                <span class="sort-icon">{{ '▲' if order=='asc' else '▼' }}</span>
+              {% endif %}
+            </a>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pesagem in pesagens %}
+        <tr>
+          <td>{{ pesagem[0] }}</td>
+          <td>{{ pesagem[1] }}</td>
+          <td>{{ pesagem[2] }}</td>
+          <td>{{ pesagem[3] }}</td>
+          <td>{{ pesagem[4] }}</td>
+          <td>{{ pesagem[5] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="pagination">
+      {% if page > 1 %}
+        <a href="{{ url_for('pagina_principal', sort=sort, order=order, page=page-1) }}">Anterior</a>
+      {% endif %}
+      <span>Página {{ page }}</span>
+      {% if has_next %}
+        <a href="{{ url_for('pagina_principal', sort=sort, order=order, page=page+1) }}">Próxima</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
