@@ -99,7 +99,7 @@ Sistema de gerenciamento de usuários, pesagens e cartões, com funcionalidades 
           ```bash
           python app.py
           ```
-       3. O ngrok criará um túnel para o sistema e o acesso remoto será disponibilizado através do domínio gerado, como `https://lenient-greatly-chipmunk.ngrok-free.app`.
+       3. O ngrok criará um túnel para o sistema e o acesso remoto será disponibilizado através do domínio gerado, como "https://lenient-greatly-chipmunk.ngrok-free.app".
 
 5. **Segurança**:
    - O sistema utiliza hashes para armazenar senhas de forma segura.
