@@ -13,6 +13,9 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import shutil
+import sys
+
 
 # Inicialização do Flask
 app = Flask(__name__)
@@ -101,15 +104,30 @@ def init_db():
 # Funções para integração com NGROK via subprocess
 
 def localizar_ngrok():
-    possiveis_caminhos = [
-        r"C:\ngrok\ngrok.exe",
-        os.path.expanduser("~\\ngrok\\ngrok.exe"),
-        os.path.join(os.getcwd(), "ngrok.exe"),
-    ]
-    for caminho in possiveis_caminhos:
-        if os.path.exists(caminho):
+    # Tenta encontrar o executável no PATH
+    ngrok_path = shutil.which("ngrok")
+    if ngrok_path:
+        return ngrok_path
+
+    # Se não estiver no PATH, tenta caminhos padrão conforme o sistema
+    if sys.platform.startswith("win"):
+        caminhos_possiveis = [
+            r"C:\ngrok\ngrok.exe",
+            os.path.expanduser("~\\ngrok\\ngrok.exe"),
+            os.path.join(os.getcwd(), "ngrok.exe"),
+        ]
+    else:
+        caminhos_possiveis = [
+            "/usr/local/bin/ngrok",
+            os.path.expanduser("~/ngrok"),
+            os.path.join(os.getcwd(), "ngrok"),
+        ]
+
+    for caminho in caminhos_possiveis:
+        if os.path.exists(caminho) and os.access(caminho, os.X_OK):
             return caminho
-    raise FileNotFoundError("O executável ngrok.exe não foi encontrado.")
+
+    raise FileNotFoundError("O executável 'ngrok' não foi encontrado. Adicione ao PATH ou especifique o caminho.")
 
 def localizar_configuracao_ngrok():
     arquivo_ngrok = "ngrok.yml"
@@ -120,8 +138,8 @@ def localizar_configuracao_ngrok():
 
 def start_ngrok():
     try:
-        ngrok_path = "C:\\ngrok\\ngrok.exe"  # Caminho direto para o executável ngrok, ajuste conforme necessário
-        config_path = localizar_configuracao_ngrok()  # Agora pegamos o arquivo ngrok.yml no mesmo diretório
+        ngrok_path = localizar_ngrok()
+        config_path = localizar_configuracao_ngrok()
         subprocess.run([ngrok_path, "start", "--config", config_path, "app"], check=True)
     except Exception as e:
         print(f"Erro ao iniciar o Ngrok: {e}")
