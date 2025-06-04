@@ -1,7 +1,0 @@
-version: "2"
-authtoken: 2wmyahyHi9kKGochvX4iGTSeTbO_71uPBWyHYYjJgmLFuCUE5
-tunnels:
-  app:
-    proto: http
-    addr: 5000
-    hostname: lenient-greatly-chipmunk.ngrok-free.app
