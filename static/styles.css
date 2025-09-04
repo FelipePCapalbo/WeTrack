@@ -11,6 +11,8 @@ html, body {
     height: 100%;
     font-family: Verdana, Arial, sans-serif;
     background-color: #f2f2f2;
+    font-size: clamp(14px, 1.5vw, 16px);
+    line-height: 1.5;
 }
 
 /* Estilo para o logo com sombra */
@@ -43,21 +45,25 @@ html, body {
     width: 100%;
     background-color: #b4b4b4;
     color: white;
-    padding: 20px;
+    padding: 16px;
     text-align: center;
 }
 .header img {
-    height: 50px;
+    height: clamp(36px, 4vw, 50px);
     vertical-align: middle;
 }
 .header-nav {
     margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    justify-content: center;
 }
 .header-nav a {
     color: white;
     text-decoration: none;
     font-weight: bold;
-    margin: 0 15px;
+    margin: 0 10px;
 }
 .header-nav a:hover {
     text-decoration: underline;
@@ -71,7 +77,7 @@ html, body {
     flex-wrap: wrap;
     gap: 30px;
     width: 100%;
-    max-width: 1200px;
+    max-width: min(1200px, 95vw);
     margin: 20px auto;
     padding: 20px;
     align-items: flex-start;
@@ -103,6 +109,7 @@ html, body {
     box-shadow: 0 0 15px rgba(0,0,0,0.1);
     padding: 20px;
     flex: 1 1 auto;
+    min-width: 0; /* permite encolher sem estourar layout */
 }
 
 /* Tamanhos específicos (ajuste conforme necessário) */
@@ -129,7 +136,16 @@ html, body {
 .lista-usuarios-container {
     flex: 1 1 60%;
     overflow-x: auto;
-    min-width: 800px;
+    min-width: 0;
+}
+
+/* Caixas com largura confortável em formulários isolados */
+.login-box,
+.senha-box,
+.cadastro-container,
+.pesagem-container {
+    max-width: 640px;
+    width: 100%;
 }
 
 /* --------------------------- */
@@ -142,14 +158,15 @@ label {
 }
 input, select {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     margin-bottom: 15px;
     border-radius: 5px;
     border: 1px solid #ccc;
+    font-size: 1rem;
 }
 button {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     background-color: #e67e22;
     color: #fff;
     border: none;
@@ -157,9 +174,17 @@ button {
     cursor: pointer;
     font-weight: bold;
     transition: background-color 0.3s;
+    min-height: 44px; /* alvo touch */
+    font-size: 1rem;
 }
 button:hover {
     background-color: #d35400;
+}
+button:focus,
+input:focus,
+select:focus {
+    outline: 2px solid #f39c12;
+    outline-offset: 2px;
 }
 
 /* ================================ */
@@ -170,12 +195,28 @@ table {
     border-collapse: collapse;
     margin-top: 20px;
     background-color: #fff;
-    font-size: 14px;
+    font-size: clamp(12px, 1.4vw, 14px);
+    min-width: 640px; /* evita layout quebrado em telas estreitas */
+    table-layout: auto; /* simplifica cálculo de largura com base no conteúdo/títulos */
 }
 th, td {
     padding: 10px;
     border: 1px solid #ccc;
     text-align: left;
+    vertical-align: middle;
+    overflow: hidden;
+}
+
+/* Truncamento preservando seleção do conteúdo */
+.cell-ellipsis {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cell-ellipsis.expanded {
+    white-space: normal;
+    overflow: visible;
 }
 th {
     background-color: #f39c12;
@@ -189,6 +230,36 @@ th a {
 }
 td {
     white-space: nowrap;
+}
+
+/* Evita que botões "estourem" a célula em tabelas com largura fixa */
+.td-actions {
+    white-space: normal;
+}
+.td-actions form {
+    display: inline-block;
+}
+.td-actions button {
+    width: auto;
+    min-width: unset;
+}
+.container,
+.lista-pesagens-container,
+.usuarios-vinculados-container,
+.lista-usuarios-container {
+    overflow-x: auto; /* garante que a tabela nunca vaze do container */
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+    border-radius: 6px;
+    line-height: 32px;
+    text-align: center;
+    font-size: 20px;
 }
 table tbody tr:hover {
     background-color: #f9f9f9;
@@ -250,5 +321,46 @@ table tbody tr:hover {
     .content-container,
     .row-container {
         flex-direction: column;
+    }
+
+    .content-container {
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .header {
+        padding: 12px;
+    }
+
+    /* Tabelas rolam horizontalmente no mobile */
+    .container,
+    .lista-pesagens-container,
+    .usuarios-vinculados-container {
+        overflow-x: auto;
+    }
+
+    /* Permite quebra de linha nos dados para reduzir overflow vertical */
+    td {
+        white-space: normal;
+    }
+    th, td {
+        word-break: break-word;
+    }
+
+    .lista-usuarios-container {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-nav a {
+        margin: 0 6px;
+    }
+    .logo {
+        /* reduz um pouco mais o logo em telas muito pequenas */
+        height: clamp(28px, 8vw, 40px);
+    }
+    button {
+        padding: 10px;
     }
 }

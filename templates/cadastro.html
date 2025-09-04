@@ -31,9 +31,9 @@
       </div>
       <label for="cpf">CPF:</label>
       <input type="text" id="cpf" name="cpf" required pattern="\d{11}" title="Digite um CPF válido (11 dígitos)">
-      <label for="tipo_usuario">Tipo de Usuário:</label>
+      <label for="tipo_usuario">Perfil do Usuário:</label>
       <select id="tipo_usuario" name="tipo_usuario" required onchange="toggleSenha()">
-        <option value="comum" selected>Usuário Comum</option>
+        <option value="colhedor" selected>Colhedor</option>
         <option value="administrador">Administrador</option>
       </select>
       <button type="submit">Cadastrar</button>

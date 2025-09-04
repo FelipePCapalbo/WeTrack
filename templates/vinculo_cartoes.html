@@ -54,14 +54,26 @@
           <td>{{ usuario[0] }}</td>
           <td>{{ usuario[1] }}</td>
           <td>
-            {% for cartao in usuario[2] %}
-              {{ cartao }}<br>
-            {% endfor %}
+            {% if usuario[2] %}
+              {% for cartao in usuario[2] %}
+                {{ cartao }}<br>
+              {% endfor %}
+            {% else %}
+              <em>Sem cartões</em>
+            {% endif %}
           </td>
-          <td>
-            <form action="{{ url_for('remover_vinculo', cpf=usuario[0], id_cartao=(usuario[2][0] if usuario[2] else '')) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja remover o vínculo?');">
-              <button type="submit">Excluir Vínculo</button>
-            </form>
+          <td class="td-actions">
+            {% if usuario[2] %}
+              {% for cartao in usuario[2] %}
+                <form style="margin-bottom:6px" action="{{ url_for('remover_vinculo', cpf=usuario[0], id_cartao=cartao) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja remover o vínculo?');">
+                  <button type="submit" class="btn-icon" title="Remover {{ cartao }}" aria-label="Remover {{ cartao }}">×</button>
+                </form>
+              {% else %}
+                <em>Sem ações</em>
+              {% endfor %}
+            {% else %}
+              <em>Sem ações</em>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
