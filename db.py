@@ -147,10 +147,7 @@ class Database:
                     SELECT cpf, id_cartao, peso, data, horario FROM pesagem
                 ''')
 
-            # Remove tabelas antigas se existirem
-            c.execute('DROP TABLE IF EXISTS usuario_cartao')
-            c.execute('DROP TABLE IF EXISTS usuario')
-            c.execute('DROP TABLE IF EXISTS pesagem')
+            # Não remove mais tabelas antigas automaticamente; isso deve ser feito manualmente
 
             # Usuário semente (admin)
             c.execute('''
