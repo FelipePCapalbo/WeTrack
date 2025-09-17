@@ -1,5 +1,9 @@
 import datetime
+import csv
+import io
 from datetime import datetime as dt
+from flask import jsonify
+from db import db
 
 from flask import (
     render_template,
@@ -8,7 +12,7 @@ from flask import (
     url_for,
     session,
     flash,
-    jsonify,
+    Response,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -465,52 +469,137 @@ def register_routes(app):
         finally:
             db.putconn(conn)
 
+    @app.route('/api/status')
+    def api_status():
+        """
+        Endpoint para sistemas embarcados verificarem a versão dos dados.
+        """
+        conn = None
+        try:
+            conn = db.getconn()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT ultima_atualizacao FROM sincronizacao WHERE tabela = 'usuarios';")
+            result = cursor.fetchone()
+            
+            cursor.close()
+
+            if result:
+                # Formata o timestamp para o padrão ISO 8601, que é fácil de processar
+                timestamp = result[0].isoformat()
+                return jsonify({"usuarios_ultima_atualizacao": timestamp})
+            else:
+                return jsonify({"erro": "Informação de sincronização não encontrada"}), 404
+
+        except Exception as e:
+            app.logger.error(f"Erro no endpoint de status: {e}")
+            return jsonify({"erro": "Erro interno do servidor"}), 500
+        
+        finally:
+            if conn:
+                db.putconn(conn)
+
+    @app.route('/exportar_usuarios')
+    def exportar_usuarios():
+        """
+        Exporta os usuários que possuem cartão vinculado para um arquivo CSV.
+        - Delimitador: Ponto e vírgula (;).
+        - Formato: ID_cartao;Nome;CPF
+        """
+        conn = None
+        try:
+            conn = db.getconn()
+            cursor = conn.cursor()
+
+            # Busca os dados dos usuários que possuem um cartão vinculado
+            cursor.execute("""
+                SELECT id_cartao, nome, cpf 
+                FROM usuarios 
+                WHERE id_cartao IS NOT NULL 
+                ORDER BY nome ASC;
+            """)
+            usuarios_com_cartao = cursor.fetchall()
+            
+            cursor.close()
+
+            # Cria o CSV em memória
+            output = io.StringIO()
+            writer = csv.writer(output, delimiter=';')
+            writer.writerows(usuarios_com_cartao)
+            
+            # Prepara a resposta HTTP
+            response = Response(output.getvalue(), mimetype='text/csv')
+            response.headers.set("Content-Disposition", "attachment", filename="export_usuarios.csv")
+            return response
+
+        except Exception as e:
+            app.logger.error(f"Erro ao exportar dados de usuários para CSV: {e}")
+            return jsonify({"erro": "Erro interno do servidor"}), 500
+        
+        finally:
+            if conn:
+                db.putconn(conn)
+
     @app.route('/adicionar_pesagem_remota', methods=['POST'])
-    @limiter.limit('100 per minute')
+    @limiter.limit('30 per minute') # Limite menor pois cada request é "maior"
     def adicionar_pesagem_remota():
         try:
-            data = request.get_json()
-            app.logger.info(f"Recebida pesagem remota: {data}")
-            id_cartao = data.get('id_cartao')
-            peso = data.get('peso')
-            data_pesagem = data.get('data')
-            horario = data.get('horario')
-            if not all([id_cartao, peso, data_pesagem, horario]):
-                app.logger.warning('Dados incompletos recebidos na pesagem remota.')
-                return jsonify({'message': 'Dados incompletos.'}), 400
-            try:
-                data_pesagem = dt.strptime(data_pesagem, '%d/%m/%Y').date()
-            except ValueError:
-                app.logger.warning('Formato de data inválido recebido.')
-                return jsonify({'message': 'Formato de data inválido. Use dd/mm/aaaa.'}), 400
-            try:
-                horario = dt.strptime(horario, '%H:%M:%S').time()
-            except ValueError:
-                app.logger.warning('Formato de horário inválido recebido.')
-                return jsonify({'message': 'Formato de horário inválido. Use HH:MM:SS.'}), 400
-            try:
-                cpf_usuario = obter_cpf_por_cartao(id_cartao)
-            except ValueError as ve:
-                app.logger.warning(f'{ve}')
-                return jsonify({'message': str(ve)}), 400
+            # Pega a lista de pesagens do corpo da requisição
+            lista_pesagens = request.get_json()
+
+            # Valida se o que foi recebido é uma lista
+            if not isinstance(lista_pesagens, list):
+                return jsonify({'message': 'O corpo da requisição deve ser um array JSON.'}), 400
+
             conn = db.getconn()
             try:
                 c = conn.cursor()
-                c.execute(
-                    '''INSERT INTO pesagem (cpf, id_cartao, peso, data, horario)
-                       VALUES (%s, %s, %s, %s, %s)''',
-                    (cpf_usuario, id_cartao, peso, data_pesagem, horario),
-                )
+                registros_inseridos = 0
+
+                # Itera sobre cada pesagem na lista recebida
+                for pesagem_data in lista_pesagens:
+                    id_cartao = pesagem_data.get('id_cartao')
+                    peso = pesagem_data.get('peso')
+                    data_str = pesagem_data.get('data')
+                    horario_str = pesagem_data.get('horario')
+                    id_pesagem = pesagem_data.get('id_pesagem') # Opcional
+
+                    # Validações básicas (pode expandir conforme necessidade)
+                    if not all([id_cartao, peso, data_str, horario_str]):
+                        app.logger.warning(f"Registro incompleto no lote: {pesagem_data}")
+                        continue # Pula para o próximo registro
+
+                    try:
+                        # Converte data e hora
+                        data_pesagem = dt.strptime(data_str, '%d/%m/%Y').date()
+                        horario_pesagem = dt.strptime(horario_str, '%H:%M:%S').time()
+                        # Obtém o CPF associado ao cartão
+                        cpf_usuario = obter_cpf_por_cartao(id_cartao)
+
+                        c.execute(
+                            '''INSERT INTO pesagens (id_pesagem, cpf, id_cartao, peso, data, horario)
+                            VALUES (%s, %s, %s, %s, %s, %s)''',
+                            (id_pesagem, cpf_usuario, id_cartao, peso, data_pesagem, horario_pesagem)
+                        )
+                        registros_inseridos += 1
+                    except ValueError as ve:
+                        # Captura erros de cartão não encontrado ou formatos inválidos
+                        app.logger.warning(f"Erro ao processar registro {pesagem_data}: {ve}")
+                        continue # Pula registro inválido
+                
+                # Se tudo correu bem, comita a transação
                 conn.commit()
-                app.logger.info(f'Pesagem remota registrada para cartão {id_cartao}.')
+                app.logger.info(f'{registros_inseridos} pesagens em lote registradas com sucesso.')
+                return jsonify({'message': f'{registros_inseridos} pesagens registradas com sucesso!'}), 200
+
             except Exception as e:
-                app.logger.error(f'Erro ao inserir pesagem remota: {e}')
-                return jsonify({'message': 'Erro interno do servidor.'}), 500
+                # Se qualquer erro ocorrer, desfaz todas as inserções
+                conn.rollback()
+                app.logger.error(f'Erro ao inserir pesagens em lote: {e}')
+                return jsonify({'message': 'Erro interno do servidor ao processar o lote.'}), 500
             finally:
                 db.putconn(conn)
-            return jsonify({'message': 'Pesagem registrada com sucesso!'}), 200
+
         except Exception as e:
             app.logger.error(f'Erro inesperado no endpoint /adicionar_pesagem_remota: {e}')
             return jsonify({'message': 'Erro interno do servidor.'}), 500
-
-

@@ -93,6 +93,7 @@ class Database:
                 c.execute('DROP TABLE IF EXISTS usuarios')
                 c.execute('DROP TABLE IF EXISTS usuario')
                 c.execute('DROP TABLE IF EXISTS pesagem')
+                c.execute('DROP TABLE IF EXISTS sincronizacao')
 
             # Tabela unificada de usuários (com id_cartao opcional)
             c.execute('''
@@ -106,6 +107,21 @@ class Database:
                 )
             ''')
 
+            # Tabela de sincronização
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS sincronizacao (
+                    tabela TEXT PRIMARY KEY,
+                    ultima_atualizacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
+            # Garante registro inicial da tabela usuarios
+            c.execute('''
+                INSERT INTO sincronizacao (tabela, ultima_atualizacao)
+                VALUES ('usuarios', CURRENT_TIMESTAMP)
+                ON CONFLICT (tabela) DO NOTHING
+            ''')
+
             # Migra dados antigos caso tabela 'usuario' exista
             c.execute("SELECT to_regclass('public.usuario')")
             if c.fetchone()[0]:
@@ -115,7 +131,7 @@ class Database:
                     ON CONFLICT (cpf) DO NOTHING
                 ''')
 
-            # Migra vinculos de cartões (pegando o primeiro por CPF)
+            # Migra vínculos de cartões (pegando o primeiro por CPF)
             c.execute("SELECT to_regclass('public.usuario_cartao')")
             if c.fetchone()[0]:
                 c.execute('''
@@ -147,14 +163,13 @@ class Database:
                     SELECT cpf, id_cartao, peso, data, horario FROM pesagem
                 ''')
 
-            # Não remove mais tabelas antigas automaticamente; isso deve ser feito manualmente
-
             # Usuário semente (admin)
             c.execute('''
                 INSERT INTO usuarios (cpf, nome, senha, tipo_usuario, id_cartao)
                 VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT (cpf) DO NOTHING
             ''', ('00000000000', 'Felipe Capalbo', generate_password_hash('12345'), 'administrador', 'BFBA5A'))
+
             conn.commit()
             app_logger.info("Banco de dados inicializado com sucesso")
         except Exception as e:
@@ -162,7 +177,19 @@ class Database:
         finally:
             self.putconn(conn)
 
+    def atualizar_sincronizacao(self, tabela: str = "usuarios"):
+        """Atualiza o timestamp da tabela de sincronização"""
+        conn = self.getconn()
+        try:
+            c = conn.cursor()
+            c.execute('''
+                UPDATE sincronizacao
+                SET ultima_atualizacao = CURRENT_TIMESTAMP
+                WHERE tabela = %s
+            ''', (tabela,))
+            conn.commit()
+        finally:
+            self.putconn(conn)
+
 
 db = Database(dsn="")
-
-
