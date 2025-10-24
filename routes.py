@@ -502,18 +502,17 @@ def register_routes(app):
     @app.route('/exportar_usuarios')
     def exportar_usuarios():
         """
-        Exporta os usuários que possuem cartão vinculado para um arquivo CSV.
-        - Delimitador: Ponto e vírgula (;).
-        - Formato: ID_cartao;Nome;CPF
+        Exporta os usuários (id_cartao, nome) para um arquivo CSV.
+        - Delimitador: Vírgula (,).
+        - Formato: ID_cartao,Nome
         """
         conn = None
         try:
             conn = db.getconn()
             cursor = conn.cursor()
 
-            # Busca os dados dos usuários que possuem um cartão vinculado
             cursor.execute("""
-                SELECT id_cartao, nome, cpf 
+                SELECT id_cartao, nome 
                 FROM usuarios 
                 WHERE id_cartao IS NOT NULL 
                 ORDER BY nome ASC;
@@ -524,7 +523,8 @@ def register_routes(app):
 
             # Cria o CSV em memória
             output = io.StringIO()
-            writer = csv.writer(output, delimiter=';')
+            # Altera o delimitador para vírgula (,)
+            writer = csv.writer(output, delimiter=',')
             writer.writerows(usuarios_com_cartao)
             
             # Prepara a resposta HTTP
@@ -541,39 +541,42 @@ def register_routes(app):
                 db.putconn(conn)
 
     @app.route('/adicionar_pesagem_remota', methods=['POST'])
-    @limiter.limit('30 per minute') # Limite menor pois cada request é "maior"
+    @limiter.limit('30 per minute') 
     def adicionar_pesagem_remota():
         try:
-            # Pega a lista de pesagens do corpo da requisição
-            lista_pesagens = request.get_json()
-
-            # Valida se o que foi recebido é uma lista
-            if not isinstance(lista_pesagens, list):
-                return jsonify({'message': 'O corpo da requisição deve ser um array JSON.'}), 400
+            payload_string = request.data.decode('utf-8')
+            
+            linhas = payload_string.strip().split('\n')
+            
+            if not linhas:
+                return jsonify({'message': 'Requisição vazia.'}), 400
 
             conn = db.getconn()
             try:
                 c = conn.cursor()
                 registros_inseridos = 0
+                registros_falhados = 0
 
-                # Itera sobre cada pesagem na lista recebida
-                for pesagem_data in lista_pesagens:
-                    id_cartao = pesagem_data.get('id_cartao')
-                    peso = pesagem_data.get('peso')
-                    data_str = pesagem_data.get('data')
-                    horario_str = pesagem_data.get('horario')
-                    id_pesagem = pesagem_data.get('id_pesagem') # Opcional
+                for linha in linhas:
+                    if not linha or "id_cartao" in linha:
+                        continue
+                    
+                    partes = linha.split(',')
+                    
+                    if len(partes) != 5:
+                        app.logger.warning(f"Linha CSV mal formatada recebida: {linha}")
+                        registros_falhados += 1
+                        continue 
 
-                    # Validações básicas (pode expandir conforme necessidade)
-                    if not all([id_cartao, peso, data_str, horario_str]):
-                        app.logger.warning(f"Registro incompleto no lote: {pesagem_data}")
-                        continue # Pula para o próximo registro
+                    id_cartao = partes[0]
+                    peso = partes[1]
+                    data_str = partes[2]
+                    horario_str = partes[3]
+                    id_pesagem = partes[4] 
 
                     try:
-                        # Converte data e hora
                         data_pesagem = dt.strptime(data_str, '%d/%m/%Y').date()
                         horario_pesagem = dt.strptime(horario_str, '%H:%M:%S').time()
-                        # Obtém o CPF associado ao cartão
                         cpf_usuario = obter_cpf_por_cartao(id_cartao)
 
                         c.execute(
@@ -584,19 +587,19 @@ def register_routes(app):
                         registros_inseridos += 1
                     except ValueError as ve:
                         # Captura erros de cartão não encontrado ou formatos inválidos
-                        app.logger.warning(f"Erro ao processar registro {pesagem_data}: {ve}")
-                        continue # Pula registro inválido
+                        app.logger.warning(f"Erro ao processar registro CSV {linha}: {ve}")
+                        registros_falhados += 1
+                        continue
                 
-                # Se tudo correu bem, comita a transação
                 conn.commit()
-                app.logger.info(f'{registros_inseridos} pesagens em lote registradas com sucesso.')
-                return jsonify({'message': f'{registros_inseridos} pesagens registradas com sucesso!'}), 200
+                msg = f'{registros_inseridos} pesagens registradas. {registros_falhados} falharam.'
+                app.logger.info(msg)
+                return jsonify({'message': msg}), 200
 
             except Exception as e:
-                # Se qualquer erro ocorrer, desfaz todas as inserções
                 conn.rollback()
-                app.logger.error(f'Erro ao inserir pesagens em lote: {e}')
-                return jsonify({'message': 'Erro interno do servidor ao processar o lote.'}), 500
+                app.logger.error(f'Erro ao inserir pesagens CSV: {e}')
+                return jsonify({'message': 'Erro interno do servidor ao processar o CSV.'}), 500
             finally:
                 db.putconn(conn)
 
