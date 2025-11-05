@@ -452,12 +452,16 @@ def register_routes(app):
             has_next=has_next,
         )
 
-    @app.route('/remover_vinculo/<cpf>/<id_cartao>', methods=['POST'])
+@app.route('/remover_vinculo/<cpf>/<id_cartao>', methods=['POST'])
     def remover_vinculo(cpf, id_cartao):
         conn = db.getconn()
         try:
             c = conn.cursor()
             c.execute('UPDATE usuarios SET id_cartao = NULL WHERE cpf = %s AND id_cartao = %s', (cpf, id_cartao))
+            c.execute(
+                'UPDATE sincronizacao SET ultima_atualizacao = CURRENT_TIMESTAMP WHERE tabela = %s', 
+                ('usuarios',)
+            )
             conn.commit()
             flash('Vínculo removido com sucesso!')
         except Exception as e:
@@ -465,21 +469,8 @@ def register_routes(app):
             flash('Erro interno do servidor.')
         finally:
             db.putconn(conn)
-        return redirect(url_for('vinculo_cartoes'))
-
-    def obter_cpf_por_cartao(id_cartao):
-        conn = db.getconn()
-        try:
-            c = conn.cursor()
-            c.execute('SELECT cpf FROM usuarios WHERE id_cartao = %s', (id_cartao,))
-            cpf = c.fetchone()
-            if cpf:
-                return cpf[0]
-            raise ValueError(f"Cartão {id_cartao} não encontrado.")
-        finally:
-            db.putconn(conn)
-
-    @app.route('/api/status')
+        return redirect(url_for('vinculo_cartoes'))    @app.route('/api/status')
+        
     def api_status():
         """
         Endpoint para sistemas embarcados verificarem a versão dos dados.
