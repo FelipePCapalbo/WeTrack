@@ -405,7 +405,6 @@ def register_routes(app):
             offset = (page - 1) * limit
             column_map = {'cpf': 'cpf', 'nome': 'nome'}
             sort_column = _map_sort(column_map, sort, 'cpf')
-            # Com estrutura nova, o cartão vem de usuarios.id_cartao
             query = f'''
                 SELECT cpf, nome, ARRAY_REMOVE(ARRAY[id_cartao], NULL) AS cartoes_vinculados
                 FROM usuarios
@@ -416,18 +415,20 @@ def register_routes(app):
             usuarios_com_vinculo = c.fetchall()
             has_next = len(usuarios_com_vinculo) > limit
             usuarios_com_vinculo = usuarios_com_vinculo[:limit]
+
             if request.method == 'POST':
                 cpf = request.form.get('cpf_usuario')
                 novo_id = request.form.get('novo_id')
                 if cpf and novo_id:
                     c.execute('UPDATE usuarios SET id_cartao = %s WHERE cpf = %s', (novo_id, cpf))
                     conn.commit()
-                    # Atualiza o timestamp de sincronização
+                    # Atualiza o timestamp da sincronização
                     db.atualizar_sincronizacao('usuarios')
                     flash('Cartão associado com sucesso!')
                 else:
                     flash('Dados insuficientes para associação.')
                 return redirect(url_for('vinculo_cartoes'))
+
         except Exception as e:
             app.logger.error(f"Erro ao vincular cartões: {e}")
             flash('Erro interno do servidor.')
@@ -443,7 +444,7 @@ def register_routes(app):
             page=page,
             has_next=has_next,
         )
-
+        
     @app.route('/remover_vinculo/<cpf>/<id_cartao>', methods=['POST'])
     def remover_vinculo(cpf, id_cartao):
         conn = db.getconn()
@@ -451,6 +452,7 @@ def register_routes(app):
             c = conn.cursor()
             c.execute('UPDATE usuarios SET id_cartao = NULL WHERE cpf = %s AND id_cartao = %s', (cpf, id_cartao))
             conn.commit()
+            db.atualizar_sincronizacao('usuarios')
             flash('Vínculo removido com sucesso!')
         except Exception as e:
             app.logger.error(f"Erro ao remover vínculo: {e}")
@@ -458,18 +460,6 @@ def register_routes(app):
         finally:
             db.putconn(conn)
         return redirect(url_for('vinculo_cartoes'))
-
-    def obter_cpf_por_cartao(id_cartao):
-        conn = db.getconn()
-        try:
-            c = conn.cursor()
-            c.execute('SELECT cpf FROM usuarios WHERE id_cartao = %s', (id_cartao,))
-            cpf = c.fetchone()
-            if cpf:
-                return cpf[0]
-            raise ValueError(f"Cartão {id_cartao} não encontrado.")
-        finally:
-            db.putconn(conn)
 
     @app.route('/api/status')
     def api_status():
