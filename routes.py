@@ -390,7 +390,7 @@ def register_routes(app):
                 db.putconn(conn)
         return redirect(url_for('cadastro'))
 
-    @app.route('/vinculo_cartoes', methods=['GET', 'POST'])
+  @app.route('/vinculo_cartoes', methods=['GET', 'POST'])
     def vinculo_cartoes():
         conn = db.getconn()
         try:
@@ -416,21 +416,31 @@ def register_routes(app):
             usuarios_com_vinculo = c.fetchall()
             has_next = len(usuarios_com_vinculo) > limit
             usuarios_com_vinculo = usuarios_com_vinculo[:limit]
+            
             if request.method == 'POST':
                 cpf = request.form.get('cpf_usuario')
                 novo_id = request.form.get('novo_id')
                 if cpf and novo_id:
                     c.execute('UPDATE usuarios SET id_cartao = %s WHERE cpf = %s', (novo_id, cpf))
                     conn.commit()
+                    
+                    # --- INÍCIO DA MODIFICAÇÃO ---
+                    # Atualiza o timestamp de 'usuarios' pois um cartão foi vinculado.
+                    # A rota /api/status lerá esta mudança.
+                    db.atualizar_sincronizacao("usuarios")
+                    # --- FIM DA MODIFICAÇÃO ---
+                    
                     flash('Cartão associado com sucesso!')
                 else:
                     flash('Dados insuficientes para associação.')
                 return redirect(url_for('vinculo_cartoes'))
+        
         except Exception as e:
             app.logger.error(f"Erro ao vincular cartões: {e}")
             flash('Erro interno do servidor.')
         finally:
             db.putconn(conn)
+        
         return render_template(
             'vinculo_cartoes.html',
             usuarios_sem_vinculo=todos_usuarios,
