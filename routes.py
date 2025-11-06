@@ -199,7 +199,7 @@ def register_routes(app):
         conn = db.getconn()
         try:
             c = conn.cursor()
-            c.execute('SELECT cpf FROM usuarios WHERE id_cartao = %s', (id_cartao,))
+            c.execute('SELECT cpf FROM usuario_cartoes WHERE id_cartao = %s', (id_cartao,))
             usuario_existente = c.fetchone()
             if usuario_existente:
                 cpf = usuario_existente[0]
@@ -378,7 +378,6 @@ def register_routes(app):
             conn = db.getconn()
             try:
                 c = conn.cursor()
-                # Remover dependências antes do usuário
                 c.execute('DELETE FROM pesagens WHERE cpf = %s', (usuario_id,))
                 c.execute('DELETE FROM usuarios WHERE cpf = %s', (usuario_id,))
                 conn.commit()
@@ -393,47 +392,73 @@ def register_routes(app):
     @app.route('/vinculo_cartoes', methods=['GET', 'POST'])
     def vinculo_cartoes():
         conn = db.getconn()
+        
+        # --- FIX 1: Inicializar variáveis ---
+        # Isso garante que 'render_template' sempre receba valores válidos
+        todos_usuarios = []
+        usuarios_com_vinculo = []
+        has_next = False
+        sort = request.args.get('sort', 'cpf')
+        order = _normalize_order(request.args.get('order', 'asc'))
+        new_order = 'asc' if order == 'desc' else 'desc'
+        page = request.args.get('page', 1, type=int)
+
         try:
             c = conn.cursor()
             c.execute('SELECT cpf, nome FROM usuarios')
             todos_usuarios = c.fetchall()
-            sort = request.args.get('sort', 'cpf')
-            order = _normalize_order(request.args.get('order', 'asc'))
-            new_order = 'asc' if order == 'desc' else 'desc'
-            page = request.args.get('page', 1, type=int)
+            
             limit = 25
             offset = (page - 1) * limit
-            column_map = {'cpf': 'cpf', 'nome': 'nome'}
+            column_map = {'cpf': 'u.cpf', 'nome': 'u.nome'}
             sort_column = _map_sort(column_map, sort, 'cpf')
+            
+            # Query principal
             query = f'''
-                SELECT cpf, nome, ARRAY_REMOVE(ARRAY[id_cartao], NULL) AS cartoes_vinculados
-                FROM usuarios
+                SELECT u.cpf, u.nome, array_agg(uc.id_cartao) AS cartoes_vinculados
+                FROM usuarios u
+                LEFT JOIN usuario_cartoes uc ON u.cpf = uc.cpf
+                GROUP BY u.cpf, u.nome
                 ORDER BY {sort_column} {order}
                 LIMIT %s OFFSET %s
             '''
+            # NOTA: Eu mudei de JOIN para LEFT JOIN.
+            # Isso mostrará *todos* os usuários, mesmo os sem cartão.
+            # Se você quiser mostrar *apenas* usuários com cartões, 
+            # volte para 'JOIN' como estava no seu código[cite: 81].
+            
             c.execute(query, (limit + 1, offset))
             usuarios_com_vinculo = c.fetchall()
             has_next = len(usuarios_com_vinculo) > limit
             usuarios_com_vinculo = usuarios_com_vinculo[:limit]
-
+            
             if request.method == 'POST':
                 cpf = request.form.get('cpf_usuario')
                 novo_id = request.form.get('novo_id')
                 if cpf and novo_id:
-                    c.execute('UPDATE usuarios SET id_cartao = %s WHERE cpf = %s', (novo_id, cpf))
+                    c.execute('''
+                        INSERT INTO usuario_cartoes (id_cartao, cpf)
+                        VALUES (%s, %s)
+                        ON CONFLICT (id_cartao) DO UPDATE
+                        SET cpf = %s
+                    ''', (novo_id, cpf, cpf))
                     conn.commit()
-                    # ADICIONE ESTA LINHA:
                     db.atualizar_sincronizacao('usuarios') 
                     flash('Cartão associado com sucesso!')
                 else:
                     flash('Dados insuficientes para associação.')
                 return redirect(url_for('vinculo_cartoes'))
-
+                
         except Exception as e:
             app.logger.error(f"Erro ao vincular cartões: {e}")
             flash('Erro interno do servidor.')
+            # --- FIX 2: Adicionar redirect ---
+            # Isso impede que o código chegue ao 'render_template' em caso de erro
+            return redirect(url_for('pagina_principal'))
+            
         finally:
             db.putconn(conn)
+            
         return render_template(
             'vinculo_cartoes.html',
             usuarios_sem_vinculo=todos_usuarios,
@@ -450,7 +475,7 @@ def register_routes(app):
         conn = db.getconn()
         try:
             c = conn.cursor()
-            c.execute('UPDATE usuarios SET id_cartao = NULL WHERE cpf = %s AND id_cartao = %s', (cpf, id_cartao))
+            c.execute('DELETE FROM usuario_cartoes WHERE cpf = %s AND id_cartao = %s', (cpf, id_cartao))
             conn.commit()
             db.atualizar_sincronizacao('usuarios')
             flash('Vínculo removido com sucesso!')
@@ -460,6 +485,23 @@ def register_routes(app):
         finally:
             db.putconn(conn)
         return redirect(url_for('vinculo_cartoes'))
+    def obter_cpf_por_cartao(id_cartao):
+        """
+        Busca o CPF associado a um id_cartao na tabela de vínculos.
+        Levanta um ValueError se o cartão não for encontrado.
+        """
+        conn = db.getconn()
+        try:
+            c = conn.cursor()
+            # Busca o CPF na nova tabela 'usuario_cartoes'
+            c.execute('SELECT cpf FROM usuario_cartoes WHERE id_cartao = %s', (id_cartao,))
+            cpf = c.fetchone()
+            if cpf:
+                return cpf[0]
+            # Se não encontrar, levanta um erro que será pego pela rota
+            raise ValueError(f"Cartão {id_cartao} não encontrado.")
+        finally:
+            db.putconn(conn)
 
     @app.route('/api/status')
     def api_status():
@@ -502,15 +544,13 @@ def register_routes(app):
         try:
             conn = db.getconn()
             cursor = conn.cursor()
-
             cursor.execute("""
-                SELECT id_cartao, nome 
-                FROM usuarios 
-                WHERE id_cartao IS NOT NULL 
-                ORDER BY nome ASC;
+                SELECT uc.id_cartao, u.nome 
+                FROM usuario_cartoes uc
+                JOIN usuarios u ON uc.cpf = u.cpf
+                ORDER BY u.nome ASC;
             """)
-            usuarios_com_cartao = cursor.fetchall()
-            
+            usuarios_com_cartao = cursor.fetchall()        
             cursor.close()
 
             # Cria o CSV em memória
