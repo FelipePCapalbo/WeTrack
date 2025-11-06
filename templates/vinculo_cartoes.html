@@ -5,7 +5,7 @@
   <!-- Formulário para vincular cartão -->
   <div class="vinculo-container">
     <h2>Vincular Cartão</h2>
-    <form id="formVinculo" action="{{ url_for('vinculo_cartoes') }}" method="POST">
+    <form action="{{ url_for('vinculo_cartoes') }}" method="POST">
       <label for="cpf_usuario">Usuário</label>
       <select id="cpf_usuario" name="cpf_usuario" required>
         {% if usuarios_sem_vinculo %}
@@ -20,11 +20,6 @@
       <input type="text" id="novo_id" name="novo_id" required>
       <button type="submit">Vincular ID</button>
     </form>
-
-    <!-- Exibição do status -->
-    <div id="statusVersao" style="margin-top:10px; font-size:14px; color:#555;">
-      Última atualização do banco: <span id="timestampStatus">carregando...</span>
-    </div>
   </div>
   
   <!-- Tabela de usuários com cartões vinculados -->
@@ -95,33 +90,4 @@
     </div>
   </div>
 </div>
-
-<!-- ==================== SCRIPT JS ==================== -->
-<script>
-async function atualizarStatusBanco() {
-  try {
-    const response = await fetch('/api/status');
-    const data = await response.json();
-    const campo = document.getElementById('timestampStatus');
-    if (data.usuarios_ultima_atualizacao) {
-      const ts = new Date(data.usuarios_ultima_atualizacao);
-      campo.textContent = ts.toLocaleString('pt-BR');
-    } else {
-      campo.textContent = "erro ao obter status";
-    }
-  } catch (err) {
-    document.getElementById('timestampStatus').textContent = "erro na requisição";
-    console.error("Erro ao consultar /api/status:", err);
-  }
-}
-
-// Atualiza status assim que a página carregar
-document.addEventListener("DOMContentLoaded", atualizarStatusBanco);
-
-// Quando enviar o formulário de vínculo, atualiza o status depois de enviar
-document.getElementById("formVinculo").addEventListener("submit", function() {
-  // Espera 3 segundos (tempo para o backend processar e atualizar o banco)
-  setTimeout(atualizarStatusBanco, 3000);
-});
-</script>
 {% endblock %}
