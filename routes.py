@@ -422,8 +422,8 @@ def register_routes(app):
                 if cpf and novo_id:
                     c.execute('UPDATE usuarios SET id_cartao = %s WHERE cpf = %s', (novo_id, cpf))
                     conn.commit()
-                    # Atualiza o timestamp da sincronização
-                    db.atualizar_sincronizacao('usuarios')
+                    # ADICIONE ESTA LINHA:
+                    db.atualizar_sincronizacao('usuarios') 
                     flash('Cartão associado com sucesso!')
                 else:
                     flash('Dados insuficientes para associação.')
