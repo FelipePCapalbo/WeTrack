@@ -415,7 +415,11 @@ def register_routes(app):
             
             # Query principal
             query = f'''
-                SELECT u.cpf, u.nome, array_agg(uc.id_cartao) AS cartoes_vinculados
+                SELECT u.cpf, u.nome, 
+                       COALESCE(
+                           array_agg(uc.id_cartao) FILTER (WHERE uc.id_cartao IS NOT NULL), 
+                           '{{}}'::TEXT[]
+                       ) AS cartoes_vinculados
                 FROM usuarios u
                 LEFT JOIN usuario_cartoes uc ON u.cpf = uc.cpf
                 GROUP BY u.cpf, u.nome
