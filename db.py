@@ -134,7 +134,6 @@ class Database:
                 VALUES ('usuarios', CURRENT_TIMESTAMP)
                 ON CONFLICT (tabela) DO NOTHING
             ''')
-            #teste
             # Migra dados antigos (sem alteração)
             c.execute("SELECT to_regclass('public.usuario')")
             if c.fetchone()[0]:
@@ -210,5 +209,5 @@ class Database:
         finally:
             self.putconn(conn)
 
-
+#teste
 db = Database(dsn="")
