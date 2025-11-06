@@ -89,25 +89,38 @@ class Database:
             reset_db = True if (os.environ.get('DB_RESET') == '1') else False
             if reset_db:
                 c.execute('DROP TABLE IF EXISTS pesagens')
+                # << IMPORTANTE >>
+                # Adicione a nova tabela ao DROP
+                c.execute('DROP TABLE IF EXISTS usuario_cartoes')
                 c.execute('DROP TABLE IF EXISTS usuario_cartao')
                 c.execute('DROP TABLE IF EXISTS usuarios')
                 c.execute('DROP TABLE IF EXISTS usuario')
                 c.execute('DROP TABLE IF EXISTS pesagem')
                 c.execute('DROP TABLE IF EXISTS sincronizacao')
 
-            # Tabela unificada de usuários (com id_cartao opcional)
+            # Tabela unificada de usuários
+            # Removida a coluna "id_cartao TEXT UNIQUE" daqui
             c.execute('''
                 CREATE TABLE IF NOT EXISTS usuarios (
                     cpf TEXT PRIMARY KEY,
                     nome TEXT NOT NULL,
                     senha TEXT NOT NULL,
                     data_inclusao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    tipo_usuario TEXT NOT NULL DEFAULT 'colhedor',
-                    id_cartao TEXT UNIQUE
+                    tipo_usuario TEXT NOT NULL DEFAULT 'colhedor'
+                )
+            ''')
+            
+            # Nova tabela de vínculos (1-para-N)
+            # Um cartão (PK) só pode pertencer a um CPF.
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS usuario_cartoes (
+                    id_cartao TEXT PRIMARY KEY,
+                    cpf TEXT NOT NULL,
+                    FOREIGN KEY (cpf) REFERENCES usuarios(cpf) ON DELETE CASCADE
                 )
             ''')
 
-            # Tabela de sincronização
+            # Tabela de sincronização (sem alteração)
             c.execute('''
                 CREATE TABLE IF NOT EXISTS sincronizacao (
                     tabela TEXT PRIMARY KEY,
@@ -115,14 +128,14 @@ class Database:
                 )
             ''')
 
-            # Garante registro inicial da tabela usuarios
+            # Garante registro inicial da tabela usuarios (sem alteração)
             c.execute('''
                 INSERT INTO sincronizacao (tabela, ultima_atualizacao)
                 VALUES ('usuarios', CURRENT_TIMESTAMP)
                 ON CONFLICT (tabela) DO NOTHING
             ''')
-
-            # Migra dados antigos caso tabela 'usuario' exista
+            #teste
+            # Migra dados antigos (sem alteração)
             c.execute("SELECT to_regclass('public.usuario')")
             if c.fetchone()[0]:
                 c.execute('''
@@ -131,18 +144,16 @@ class Database:
                     ON CONFLICT (cpf) DO NOTHING
                 ''')
 
-            # Migra vínculos de cartões (pegando o primeiro por CPF)
+            # Migra vínculos de cartões para a *nova tabela*
             c.execute("SELECT to_regclass('public.usuario_cartao')")
             if c.fetchone()[0]:
                 c.execute('''
-                    UPDATE usuarios u SET id_cartao = v.id_cartao
-                    FROM (
-                        SELECT cpf, MIN(id_cartao) AS id_cartao FROM usuario_cartao GROUP BY cpf
-                    ) v
-                    WHERE u.cpf = v.cpf AND u.id_cartao IS NULL
+                    INSERT INTO usuario_cartoes (id_cartao, cpf)
+                    SELECT id_cartao, cpf FROM usuario_cartao
+                    ON CONFLICT (id_cartao) DO NOTHING
                 ''')
 
-            # Tabela de pesagens
+            # Tabela de pesagens (sem alteração)
             c.execute('''
                 CREATE TABLE IF NOT EXISTS pesagens (
                     id_pesagem SERIAL PRIMARY KEY,
@@ -154,8 +165,8 @@ class Database:
                     FOREIGN KEY (cpf) REFERENCES usuarios(cpf)
                 )
             ''')
-
-            # Migra pesagens antigas
+            
+            # Migra pesagens antigas (sem alteração)
             c.execute("SELECT to_regclass('public.pesagem')")
             if c.fetchone()[0]:
                 c.execute('''
@@ -163,12 +174,20 @@ class Database:
                     SELECT cpf, id_cartao, peso, data, horario FROM pesagem
                 ''')
 
-            # Usuário semente (admin)
+            # Usuário semente (admin) - Inserção em duas etapas
             c.execute('''
-                INSERT INTO usuarios (cpf, nome, senha, tipo_usuario, id_cartao)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO usuarios (cpf, nome, senha, tipo_usuario)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT (cpf) DO NOTHING
-            ''', ('00000000000', 'Felipe Capalbo', generate_password_hash('12345'), 'administrador', 'BFBA5A'))
+            ''', ('00000000000', 'Felipe Capalbo', generate_password_hash('12345'), 'administrador'))
+            
+            # Vínculo do admin na nova tabela
+            c.execute('''
+                INSERT INTO usuario_cartoes (id_cartao, cpf)
+                VALUES (%s, %s)
+                ON CONFLICT (id_cartao) DO NOTHING
+            ''', ('BFBA5A', '00000000000'))
+
 
             conn.commit()
             app_logger.info("Banco de dados inicializado com sucesso")
